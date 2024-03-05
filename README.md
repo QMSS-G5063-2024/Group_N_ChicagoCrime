@@ -1,5 +1,4 @@
 # Group N -- Chicago Crime
---
 This is the repository for Group N's group project.
 ## Group members:
 Camille Mancuso (clm2246@columbia.edu),   
