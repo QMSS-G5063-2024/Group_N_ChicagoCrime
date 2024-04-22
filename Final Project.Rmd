@@ -1,0 +1,191 @@
+---
+title: "Final_pj"
+output: html_document
+date: '2024-03-05'
+---
+
+```{r}
+library(geosphere)
+library(ggplot2)
+library(RColorBrewer) 
+library(sp)
+library(sf)
+library(maps)
+library(data.table)
+library(dplyr)
+library(ggthemes)
+library(shiny)
+library(lubridate)
+library(DT)
+library(plotly)
+```
+
+```{r}
+#Chicago crime data
+chicago <- read.csv("/Users/sooyeonchoi/Documents/MA_QMSS/Spring2024/GR5063_DV/GR5063_Final/data/chicago_crimes_present.csv", as.is=T)
+```
+
+#1. Line chart - Crime Rates Over Time
+```{r}
+crime_count <- table(chicago$Year)
+crime_count_df <- as.data.frame(crime_count)
+colnames(crime_count_df) <- c("Year", "Crime_Count")
+```
+```{r}
+filtered_year <- subset(chicago, Year >= 2001 & Year <=2023)
+```
+```{r}
+filtered_type <- filtered_year %>%
+  group_by(Year, Primary.Type) %>%
+  summarise (count = n()) %>%
+  arrange(Year, desc(count)) %>%
+  group_by(Year) %>%
+  top_n(10) #top 10 primary crime types
+```
+
+
+#Shiny
+
+##Chicago Crime Rates Over Time with Significant Events
+```{r}
+ui <- fluidPage(
+  
+  # Application title
+  titlePanel("Chicago Crime Rates Over Time"),
+  
+  # Sidebar layout
+  sidebarLayout(
+    sidebarPanel(
+      # Input for selecting events
+      selectInput("event", "Select Event:", 
+                  choices = c("9/11", "2008 President Election", "Great Recession", "2016 President Election", "George Floyd Protests", "COVID-19 Pandemic"),
+                  selected = "Great Recession")
+    ),
+    
+    # Main panel for displaying plot
+    mainPanel(
+      plotOutput("crimePlot")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  
+  # Filter data based on selected event
+  filtered_data <- reactive({
+    event_data <- switch(input$event,
+                         "9/11" = 2001,
+                         "2008 President Election" = 2008,
+                         "Great Recession" = 2008,
+                         "2016 President Election" = 2016,
+                         "George Floyd Protests" = 2020,
+                         "COVID-19 Pandemic" = 2020)
+    crime_count_df[crime_count_df$Year == event_data, ]
+  })
+  
+  # Render plot
+  output$crimePlot <- renderPlot({
+    ggplot(crime_count_df, aes(x = Year, y = Crime_Count, group = 1)) +
+      geom_line(color="blue") +
+      geom_point() +
+      labs(title = "Chicago Crime Rates Over Time (2001 - Present)",
+           x = "Year",
+           y = "Frequency of Crimes") +
+      theme_minimal() +
+      scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      geom_point(data = filtered_data(), aes(x = Year, y = Crime_Count), color = "red", size = 3)
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
+
+
+##Chicago Crime Types Distribution by Year
+```{r}
+# Define UI
+ui <- fluidPage(
+  titlePanel("Chicago Crime Types Distribution"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("year", "Select Year:", choices = 2001:2023)
+    ),
+    mainPanel(
+      plotOutput("crime_plot")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  output$crime_plot <- renderPlot({
+    filtered_yr <- filtered_type[filtered_type$Year == input$year, ]
+    ggplot(filtered_yr, aes(x = Year, y = count, fill = Primary.Type)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_x_continuous(breaks = unique(filtered_type$Year)) +
+      theme_minimal() +
+      labs(
+        title = paste("Top 10 Criminal Types (", input$year, ")"),
+        x = "Year",
+        y = "Count",
+        fill = "Primary Type of Crime"
+      ) +
+      scale_fill_viridis_d(option = "D", begin = 0.1, end = 0.9) +
+      theme(
+        legend.title = element_blank(),
+        legend.position = "bottom"
+      )
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
+
+
+#Chicago Crime Distribution by Types
+```{r}
+# Define UI
+ui <- fluidPage(
+  titlePanel("Crime Distribution Over Time"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("crime_type", "Select Crime Type:", choices = unique(filtered_type$Primary.Type)),
+      uiOutput("year_selector")
+    ),
+    mainPanel(
+      plotOutput("crime_plot")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  output$crime_plot <- renderPlot({
+    filtered_crime <- filtered_type[filtered_type$Primary.Type == input$crime_type, ]
+    ggplot(filtered_crime, aes(x = Year, y = count)) +
+      geom_point(size = 3) +
+      scale_x_continuous(breaks = unique(filtered_type$Year)) +
+      theme_minimal() +
+      labs(
+        title = paste("Distribution of", input$crime_type, "from 2001 to 2023"),
+        x = "Year",
+        y = "Count"
+      ) +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)
+      )
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
+
+
+
+
+
