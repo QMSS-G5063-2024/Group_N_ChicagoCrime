@@ -1,0 +1,164 @@
+---
+title: "Group Project"
+author: "Camille Mancuso"
+date: "2024-04-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+setwd("/Users/camman/Desktop/homework")
+```
+
+```{r}
+crime_data <- read.csv("Crimes_-_2001_to_Present.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+demographics_data <- read.csv("Chicago_Data - Sheet1.csv", stringsAsFactors = FALSE)
+```
+
+
+#Visualizing Chicago Crime Over Time
+Below is code that allows users to visualize crime events in Chicago over time. Select a year and crime type to get started.
+```{r}
+library(shiny)
+library(leaflet)
+library(dplyr)
+
+# Sort years in chronological order
+sorted_years <- sort(unique(crime_data$Year))
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("Chicago Crime Trends"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("year", "Select Year", choices = sorted_years),
+      selectInput("crime_type", "Select Crime Type", choices = unique(crime_data$Primary.Type))
+    ),
+    mainPanel(
+      leafletOutput("crime_map"),
+      textOutput("crime_count_text") # Output element for crime count text
+    )
+  )
+)
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("Chicago Crime Trends"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("year", "Select Year", choices = sorted_years),
+      selectInput("crime_type", "Select Crime Type", choices = unique(crime_data$Primary.Type))
+    ),
+    mainPanel(
+      leafletOutput("crime_map"),
+      textOutput("crime_count_text") # Output element for crime count text
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  output$crime_map <- renderLeaflet({
+    filtered_data <- crime_data %>%
+      filter(Year == input$year, Primary.Type == input$crime_type)
+    
+    # Create a basic leaflet map
+    leaflet() %>%
+      addTiles() %>%
+      addMarkers(data = filtered_data, ~Longitude, ~Latitude, popup = ~Description,
+                 clusterOptions = markerClusterOptions())
+  })
+  
+  # Calculate crime count and render text
+  output$crime_count_text <- renderText({
+    filtered_data <- crime_data %>%
+      filter(Year == input$year, Primary.Type == input$crime_type)
+    paste("Number of", input$crime_type, "crimes in", input$year, ":", nrow(filtered_data))
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
+
+#Crime Rates and Demographics
+This plot allows users to compare crime rates of Chicago Community Areas, as well as get some information on the demographics of those particular community areas.
+```{r}
+library(shiny)
+library(ggplot2)
+library(dplyr)  # Add this line to load the dplyr package
+library(tidyr)
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("Chicago Crime and Demographics"),
+  sidebarLayout(
+    sidebarPanel(
+      selectizeInput("community_areas", "Select Community Areas", 
+                     choices = sort(unique(demographics_data$communityarea)),
+                     multiple = TRUE)
+    ),
+    mainPanel(
+      plotOutput("crime_rate_plot"),
+      plotOutput("demographic_plot")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output, session) {
+  
+  # Filter crime data for years 2020-2024 and aggregate by community area
+  filtered_crime_data <- reactive({
+    selected_areas <- input$community_areas
+    crime_data %>%
+      filter(Year >= 2020, Year <= 2024, Community.Area %in% selected_areas) %>%
+      group_by(Community.Area, Year) %>%
+      summarise(total_crimes = n())  # Ensure that the summarise function is used correctly
+  })
+  
+  # Update crime rate plot based on selected community area(s)
+  output$crime_rate_plot <- renderPlot({
+    selected_areas <- input$community_areas
+    filtered_data <- filtered_crime_data()
+    
+    # Plot crime rates for each selected community area
+    ggplot(filtered_data, aes(x = Year, y = total_crimes, color = factor(Community.Area))) +
+      geom_line() +
+      labs(title = "Crime Rate Comparison",
+           x = "Year",
+           y = "Total Crimes",
+           color = "Community Area") +
+      theme_minimal()
+  })
+  
+  # Render stacked bar plot for demographic data of selected community area(s)
+  output$demographic_plot <- renderPlot({
+    selected_areas <- input$community_areas
+    selected_demographics <- demographics_data %>%
+      filter(communityarea %in% selected_areas)  # Ensure that the column name is correct
+    
+    # Convert data to long format
+    demographic_long <- selected_demographics %>%
+      pivot_longer(cols = white:asian, names_to = "demographic_group", values_to = "percentage")
+    
+    # Plot stacked bar plot
+    ggplot(demographic_long, aes(x = reorder(communityarea, percentage), 
+                                  fill = factor(demographic_group), y = percentage)) +
+      geom_bar(stat = "identity") +
+      scale_fill_manual(values = c("blue", "darkorange", "green", "red"),
+                        labels = c("Asian", "Black", "Hispanic", "White")) +
+      labs(title = "Demographics Comparison",
+           x = "Community Area",
+           y = "Percentage (%)",
+           fill = "Demographic Group") +
+      theme_minimal() +
+      coord_flip()
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
