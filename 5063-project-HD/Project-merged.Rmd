@@ -1,0 +1,512 @@
+---
+title: "project_navbar"
+output: html_document
+date: "2024-04-23"
+---
+
+```{r,message=FALSE, warning=FALSE}
+library(geosphere)
+library(ggplot2)
+library(RColorBrewer) 
+library(sp)
+library(sf)
+library(maps)
+library(data.table)
+library(dplyr)
+library(ggthemes)
+library(shiny)
+library(lubridate)
+library(DT)
+library(plotly)
+library(readr)
+library(ggthemes)
+library(patchwork)
+library(tidyverse)
+library(leaflet)
+library(shinyjqui)
+```
+```{r}
+#Chicago crime data
+crime_data <- read.csv("chicago_crimes_present.csv", as.is=T)
+demographics_data <- read.csv("Chicago_Data - Sheet1.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+crime_count <- table(crime_data$Year)
+crime_count_df <- as.data.frame(crime_count)
+colnames(crime_count_df) <- c("Year", "Crime_Count")
+```
+
+```{r}
+filtered_year <- subset(crime_data, Year >= 2001 & Year <=2023)
+```
+
+```{r}
+filtered_type <- filtered_year %>%
+  group_by(Year, Primary.Type) %>%
+  summarise (count = n()) %>%
+  arrange(Year, desc(count)) %>%
+  group_by(Year) %>%
+  top_n(10) #top 10 primary crime types
+```
+```{r}
+# Sort years in chronological order
+sorted_years <- sort(unique(crime_data$Year))
+```
+
+```{r warning=FALSE, echo=TRUE, message=FALSE}
+# read data
+police<-read.csv("Police_Stations.csv")
+bar<-read.csv("Chicago_Bars.csv")
+```
+
+```{r warning=FALSE, echo=TRUE, message=FALSE,cache=TRUE}
+merged_crime_top5<-read.csv("merged_crime_top5.csv")
+```
+
+```{r warning=FALSE, echo=TRUE, message=FALSE}
+merged_crime_top5_bar<-read.csv("merged_crime_top5_bar.csv")
+```
+
+```{r warning=FALSE, echo=TRUE, message=FALSE}
+# Load your data here
+income_data <- read.csv("Per_Capita_Income_1.csv")
+#crime_data <- read.csv("/Users/caraxu/Downloads/Crimes_-_2022.csv")
+
+# Print column names to verify
+# names(crime_data)
+# names(income_data)
+
+# Merge data based on Community Area
+merged_data <- merge(x = crime_data, y = income_data, by.x = "Community.Area", by.y = "Community.Area.Number", all = TRUE)
+```
+
+
+```{r}
+ui <- navbarPage(
+            "Chicago Crimes",
+            id="main_navbar",
+            
+#first tab: crime rates over time
+
+        tabPanel(
+            "Crime Rates Over Time",
+            # Application title
+            titlePanel("Chicago Crime Rates Over Time"),
+            
+            # Sidebar layout
+            sidebarLayout(
+              sidebarPanel(
+                # Input for selecting events
+                selectInput("event", "Select Event:", 
+                            choices = c("9/11", "2008 President Election", "Great Recession", "2016 President Election", "George Floyd Protests", "COVID-19 Pandemic"),
+                            selected = "Great Recession")
+              ),
+              
+              # Main panel for displaying plot
+              mainPanel(
+                plotOutput("crimePlot")
+              )
+            )
+          ),
+
+#Second tab: Chicago Crime Types Distribution
+
+        tabPanel(
+            "Crime Types Distribution",
+            
+            titlePanel("Chicago Crime Types Distribution"),
+            sidebarLayout(
+              sidebarPanel(
+                selectInput("year", "Select Year:", choices = 2001:2023)
+              ),
+              mainPanel(
+                plotOutput("crime_plot")
+              )
+            )
+        ),
+
+#third tab
+        tabPanel("Crime Map",
+          titlePanel("Chicago Crime Trends"),
+          sidebarLayout(
+            sidebarPanel(
+              selectInput("year", "Select Year", choices = sorted_years),
+              selectInput("crime_type", "Select Crime Type", choices = unique(crime_data$Primary.Type))
+            ),
+            mainPanel(
+              leafletOutput("crime_map"),
+              textOutput("crime_count_text") # Output element for crime count text
+            )
+          )
+    ),
+
+#fourth tab
+        tabPanel("Crime and Demographics",
+              titlePanel("Chicago Crime and Demographics"),
+              sidebarLayout(
+                  sidebarPanel(
+                      selectizeInput("community_areas", "Select Community Areas", 
+                                      choices = sort(unique(demographics_data$communityarea)),
+                                      multiple = TRUE,selected=1)
+                      ),
+              mainPanel(
+                        plotOutput("crime_rate_plot"),
+                        plotOutput("demographic_plot")
+                  )
+              )
+        ),
+#fifth tab
+          tabPanel("Crime and Police Stations",
+                   leafletOutput("map1",width="100%",height="700px"),
+             
+             # div(class="outer",
+             #     tags$head(includeCSS("styles.css"))
+             #     ),
+             # 
+             absolutePanel(top=80,right=30,fixed=FALSE,draggable = TRUE,
+                           selectizeInput("crime_primary_type",label="Crime Type",
+                                          choices=setNames(unique(merged_crime_top5$Primary.Type),
+                                                           unique(merged_crime_top5$Primary.Type)),
+                                          selected="THEFT",multiple=TRUE),
+                           selectizeInput("crime_district",label="Police District",
+                                          choices=setNames(unique(merged_crime_top5$DISTRICT.NAME),
+                                                           unique(merged_crime_top5$DISTRICT.NAME)),
+                                          selected="Central",multiple=TRUE),
+                           sliderInput("year",label="Year",
+                                        min=2018,max=2023, value=2020),
+                           checkboxInput("police","Show Police Stations",TRUE)),
+                          
+              plotlyOutput("bar_distance_po",
+                            height=400)
+                           # DTOutput("da")
+            ),
+
+#sixth tab
+          tabPanel(
+                "Crime and Bar",
+                leafletOutput("map2",width="100%",height="700px"),
+       
+                absolutePanel(top=80,right=30,fixed=FALSE,draggable = TRUE,
+                     selectizeInput("crime_primary_type_bar",label="Crime Type",
+                                    choices=setNames(unique(merged_crime_top5_bar$Primary.Type),
+                                                     unique(merged_crime_top5_bar$Primary.Type)),
+                                    selected="BATTERY",multiple=TRUE),
+                     selectizeInput("crime_district_bar",label="Police District",
+                                    choices=setNames(unique(merged_crime_top5_bar$DISTRICT.NAME),
+                                                     unique(merged_crime_top5_bar$DISTRICT.NAME)),
+                                    selected="Central", multiple=TRUE),
+                     selectizeInput("name_bar",label="Bar Name",
+                                    choices=setNames(unique(merged_crime_top5_bar$near_bar_name),
+                                                     unique(merged_crime_top5_bar$near_bar_name)),
+                                    selected=c("2 TWENTY 2 TAVERN"),multiple=TRUE),
+                     checkboxGroupInput(inputId = "Time", label="The Time Period in which the Crime Occurred",
+                                  c("Daytime (6 am to 6 pm)"="daytime","Nighttime (6 pm to 6 am)"="nighttime"),
+                                  selected="daytime")
+                ),
+                    
+                plotlyOutput("bar_crime_distance_bar",
+                            height=400),
+          ),
+
+#seventh tab
+            tabPanel(
+                  "Crime and Socio-economic Analysis",
+                  titlePanel("Crime and Socio-economic Analysis in Chicago"),
+                  sidebarLayout(
+                    sidebarPanel(
+                      selectInput("crimeType", "Choose a Crime Type:", choices = unique(merged_data$`Primary.Type`))
+                    ),
+                    mainPanel(
+                      plotOutput("incomeCrimePlot")
+                    )
+                  )
+              )
+)
+
+# Define server logic
+server <- function(input, output) {
+#SC
+    #first tab  
+            # Filter data based on selected event
+            filtered_data <- reactive({
+              event_data <- switch(input$event,
+                                   "9/11" = 2001,
+                                   "2008 President Election" = 2008,
+                                   "Great Recession" = 2008,
+                                   "2016 President Election" = 2016,
+                                   "George Floyd Protests" = 2020,
+                                   "COVID-19 Pandemic" = 2020)
+              crime_count_df[crime_count_df$Year == event_data, ]
+            })
+            
+            # Render plot
+            output$crimePlot <- renderPlot({
+              ggplot(crime_count_df, aes(x = Year, y = Crime_Count, group = 1)) +
+                geom_line(color="blue") +
+                geom_point() +
+                labs(title = "Chicago Crime Rates Over Time (2001 - Present)",
+                     x = "Year",
+                     y = "Frequency of Crimes") +
+                theme_minimal() +
+                scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
+                theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+                geom_point(data = filtered_data(), aes(x = Year, y = Crime_Count), color = "red", size = 3)
+            })
+            
+    #second tab        
+            output$crime_plot <- renderPlot({
+              filtered_yr <- filtered_type[filtered_type$Year == input$year, ]
+              ggplot(filtered_yr, aes(x = Year, y = count, fill = Primary.Type)) +
+                geom_bar(stat = "identity", position = "dodge") +
+                scale_x_continuous(breaks = unique(filtered_type$Year)) +
+                theme_minimal() +
+                labs(
+                  title = paste("Top 10 Criminal Types (", input$year, ")"),
+                  x = "Year",
+                  y = "Count",
+                  fill = "Primary Type of Crime"
+                ) +
+                scale_fill_viridis_d(option = "D", begin = 0.1, end = 0.9) +
+                theme(
+                  legend.title = element_blank(),
+                  legend.position = "bottom"
+                )
+            })
+            
+#CM
+    #third panel
+            output$crime_map <- renderLeaflet({
+              filtered_data <- crime_data %>%
+              filter(Year == input$year, Primary.Type == input$crime_type)
+            
+            # Create a basic leaflet map
+              leaflet() %>%
+              addTiles() %>%
+              addMarkers(data = filtered_data, ~Longitude, ~Latitude, popup = ~Description,
+              clusterOptions = markerClusterOptions())
+            })
+            
+            # Calculate crime count and render text
+            output$crime_count_text <- renderText({
+              filtered_data <- crime_data %>%
+              filter(Year == input$year, Primary.Type == input$crime_type)
+              paste("Number of", input$crime_type, "crimes in", input$year, ":", nrow(filtered_data))
+            })
+            
+    #fourth panel
+            
+            # Filter crime data for years 2020-2024 and aggregate by community area
+            filtered_crime_data <- reactive({
+              selected_areas <- input$community_areas
+              crime_data %>%
+                filter(Year >= 2020, Year <= 2024, Community.Area %in% selected_areas) %>%
+                group_by(Community.Area, Year) %>%
+                summarise(total_crimes = n())  # Ensure that the summarise function is used correctly
+            })
+            
+            # Update crime rate plot based on selected community area(s)
+            output$crime_rate_plot <- renderPlot({
+              selected_areas <- input$community_areas
+              filtered_data <- filtered_crime_data()
+              
+              # Plot crime rates for each selected community area
+              ggplot(filtered_data, aes(x = Year, y = total_crimes, color = factor(Community.Area))) +
+                geom_line() +
+                labs(title = "Crime Rate Comparison",
+                     x = "Year",
+                     y = "Total Crimes",
+                     color = "Community Area") +
+                theme_minimal()
+            })
+            
+            # Render stacked bar plot for demographic data of selected community area(s)
+            output$demographic_plot <- renderPlot({
+              selected_areas <- input$community_areas
+              selected_demographics <- demographics_data %>%
+                filter(communityarea %in% selected_areas)  # Ensure that the column name is correct
+              
+              # Convert data to long format
+              demographic_long <- selected_demographics %>%
+                pivot_longer(cols = white:asian, names_to = "demographic_group", values_to = "percentage")
+              
+              # Plot stacked bar plot
+              ggplot(demographic_long, aes(x = reorder(communityarea, percentage), 
+                                            fill = factor(demographic_group), y = percentage)) +
+                geom_bar(stat = "identity") +
+                scale_fill_manual(values = c("blue", "darkorange", "green", "red"),
+                                  labels = c("Asian", "Black", "Hispanic", "White")) +
+                labs(title = "Demographics Comparison",
+                     x = "Community Area",
+                     y = "Percentage (%)",
+                     fill = "Demographic Group") +
+                theme_minimal() +
+                coord_flip()
+            })
+
+#HD
+  #fifth panel
+            filteredData <- reactive({
+                            merged_crime_top5 %>%
+                              filter(Year==input$year &
+                                    Primary.Type %in% input$crime_primary_type &
+                                    DISTRICT.NAME %in% input$crime_district)
+            })
+            
+            output$map1 <- renderLeaflet({
+                            map<- leaflet(filteredData()) %>%
+                                    addTiles() %>%
+                                    setView(-87.656, 41.861, zoom = 10.5) %>%
+                                    addCircleMarkers(
+                                              lng = ~Longitude, lat = ~Latitude, radius = 1,
+                                             color="#E41A1C",
+                                              popup = ~paste("Date: ", Date, "<BR/>",
+                                                          "Crime Primary Type: ", Primary.Type, "<BR/>")
+                                    ) %>%
+                                    # addLegend(pal=pal1, values=~merged_crime_top5$Primary.Type, title="Crime Type",
+                                    #         position="bottomright",opacity=0.8) %>%
+                                    addMiniMap(toggleDisplay = TRUE, zoomAnimation = TRUE) 
+            
+                            # If the checkbox is checked, add the police stations markers
+                            if (input$police) {
+                                map <- map %>%
+                                        addMarkers(
+                                        lng = ~LONGITUDE,
+                                        lat = ~LATITUDE,
+                                        data=police,
+                                        popup = ~paste("Name:",DISTRICT.NAME,"<BR/>",
+                                        "District", DISTRICT, "Police Station")
+                                        )
+                                        } 
+                            else {
+                                        # If the checkbox is unchecked, no marker
+                                        map
+                                        }
+            
+            })
+            
+            filteredData2<-reactive({
+                            merged_crime_top5 %>%
+                              filter(Year==input$year &
+                              Primary.Type %in% input$crime_primary_type &
+                              DISTRICT.NAME %in% input$crime_district) %>%
+                              group_by(distance_range) %>%
+                              summarize(count=n())
+            })
+            
+            
+            
+            output$bar_distance_po <-renderPlotly ({
+                                      plot_ly(filteredData2(),
+                                            x=~distance_range,
+                                            y=~count,
+                                            type="bar",
+                                            color="#E41A1C",
+                                            text=~paste(count),
+                                            hoverinfo="text") %>%
+                                        layout(xaxis=list(title="Distance range (m)",
+                                            categoryorder="array",
+                                            categoryarray=c("0~100","100~200","200~400","400~600","600~800","800~1000",
+                                            "1000~1200","1200~1400","1400~1600","1600~1800","1800~2000",
+                                            "2000~3000","3000+"),
+                                            titlefont=list(size=15)),
+                                            yaxis=list(title=""),
+                                            title=list(text=paste0("Number of Crimes Committed Within a Specified Distance of Police Stations"),
+                                            font=list(size=15)))
+            })
+            
+  #sixth panel
+            filteredData3 <- reactive({
+                  merged_crime_top5_bar %>%
+                  filter( near_bar_name %in% input$name_bar &
+                           Primary.Type %in% input$crime_primary_type_bar &
+                           DISTRICT.NAME %in% input$crime_district_bar &
+                           time_cate %in% input$Time)
+                })
+                  
+            output$map2 <- renderLeaflet({
+                      map<- leaflet(filteredData3()) %>%
+                        addTiles() %>%
+                        setView(-87.656, 41.861, zoom = 12) %>%
+                        addCircleMarkers(
+                        lng = ~Longitude, lat = ~Latitude, radius = 1,
+                        color="#E41A1C",
+                        popup = ~paste("Date: ", Date, "<BR/>",
+                                     "Crime Primary Type: ", Primary.Type, "<BR/>")
+                                   ) %>%
+                        addMiniMap(toggleDisplay = TRUE, zoomAnimation = TRUE) %>%
+                        addMarkers(lng=~bar_lng,
+                                   lat = ~bar_lat,
+                                   popup=~paste("Bar Name:",near_bar_name, "<BR/>",
+                                                "District",DISTRICT)) 
+                  })
+                            
+            filteredData4<-reactive({
+              merged_crime_top5_bar %>%
+                  filter(near_bar_name %in% input$name_bar &
+                          Primary.Type %in% input$crime_primary_type_bar &
+                          DISTRICT.NAME %in% input$crime_district_bar &
+                          time_cate %in% input$Time) %>%
+                  group_by(distance_range) %>%
+                  summarize(count=n())
+              })
+                  
+            output$bar_crime_distance_bar <-renderPlotly ({
+              plot_ly(filteredData4(),
+                     x=~distance_range,
+                     y=~count,
+                     type="bar",
+                     color="#E41A1C",
+                     text=~paste(count),
+                     hoverinfo="text") %>%
+               layout(xaxis=list(title="Distance range (m)",
+                                 categoryorder="array",
+                                 categoryarray=c("0~20","20~40","40~60","60~80","80~100","100~200",
+                                              "200~300","300~400","400~500","500~1000","1000~1500",
+                                              "1500~2000","2000+"),
+                                 titlefont=list(size=15)),
+                      yaxis=list(title=""),
+                      title=list(text=paste0("Number of Crimes Committed Within a Specified Distance of Bars"),
+                                 font=list(size=15)))
+            
+            })
+                # output$da <-DT::renderDT({
+                #   filteredData4()
+                #  })
+
+#CX
+    #seventh tab
+            output$incomeCrimePlot <- renderPlot({
+                # Filter and prepare the data
+                filtered_data <- merged_data %>%
+                  filter(`Primary.Type` == input$crimeType) %>%
+                  group_by(`COMMUNITY.AREA.NAME`) %>%
+                  summarise(Crime_Count = n(), Avg_Income = mean(`PER.CAPITA.INCOME`, na.rm = TRUE)) %>%
+                  arrange(desc(Crime_Count)) %>%  # Order by descending crime count
+                  slice_head(n = 5) %>%  # Select the top 5 entries
+                  arrange(desc(Avg_Income))  # Now also order by descending average income
+                
+                # Generate the bar plot with income ordered from highest to lowest
+                ggplot(filtered_data, aes(x = reorder(`COMMUNITY.AREA.NAME`, Avg_Income), y = Crime_Count, fill = Avg_Income)) +
+                  geom_bar(stat = "identity") +
+                  coord_flip()+
+                  theme_minimal()+
+                  scale_fill_gradientn(colors=c("#C4D8F2","#5D74A2","#33395B"))+
+                  # scale_fill_gradient(low = "blue", high = "red") +
+                  labs(title = "Top 5 Community Areas by Crime Frequency", x = "Community Area", y = "Number of Crimes", fill = "Average Income")+
+                  theme(axis.text.x = element_text( hjust = 1),
+                        panel.grid = element_blank(),
+                        axis.line=element_line(color="grey"),
+                        panel.grid.major = element_blank(),
+                        panel.grid.major.x = element_line(color="grey90"),
+                        axis.text = element_text(size=16),
+                        plot.title=element_text(size=17,hjust=0,face="bold"),
+                        axis.title = element_text(size=16,color="black"),
+                        legend.title=element_text(size=12),
+                        legend.text = element_text(size=12)) 
+              })
+            
+}
+
+shinyApp(ui=ui,server=server)
+```
