@@ -44,9 +44,8 @@ filtered_type <- filtered_year %>%
 ```
 
 
-#Shiny
+# This Shiny App visualizes Chicago crime rates over time from 2001 to the present. It will allow the users to select specific events that may affect Chicago crime rates.
 
-##Chicago Crime Rates Over Time with Significant Events
 ```{r}
 ui <- fluidPage(
   
@@ -104,7 +103,8 @@ shinyApp(ui = ui, server = server)
 ```
 
 
-##Chicago Crime Types Distribution by Year
+#This Shiny App visualizes primary crime types distribution in Chicago. It will allow the users to select a year between 2001 to 2023 and generate distribution of top 10 crime types accordingly.
+
 ```{r}
 # Define UI
 ui <- fluidPage(
@@ -146,7 +146,8 @@ shinyApp(ui = ui, server = server)
 ```
 
 
-#Chicago Crime Distribution by Types
+#This Shiny App visualizes the frequency of crime types over time, allowing users to select a specific crime type and generate the corresponding frequency of crime.
+
 ```{r}
 # Define UI
 ui <- fluidPage(
