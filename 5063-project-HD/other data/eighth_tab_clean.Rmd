@@ -1,0 +1,60 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-27"
+---
+
+```{r,message=FALSE, warning=FALSE}
+library(geosphere)
+library(ggplot2)
+library(RColorBrewer) 
+library(sp)
+library(sf)
+library(maps)
+library(data.table)
+library(dplyr)
+library(ggthemes)
+library(shiny)
+library(lubridate)
+library(DT)
+library(plotly)
+library(readr)
+library(ggthemes)
+library(patchwork)
+library(tidyverse)
+library(leaflet)
+library(shinyjqui)
+library(shinythemes)
+```
+```{r}
+#Chicago crime data
+crime_data <- read.csv("chicago_crimes_present.csv", as.is=T)
+
+
+```
+
+```{r warning=FALSE, echo=TRUE, message=FALSE}
+# Load your data here
+income_data <- read.csv("Per_Capita_Income_1.csv")
+#crime_data <- read.csv("/Users/caraxu/Downloads/Crimes_-_2022.csv")
+
+# Print column names to verify
+# names(crime_data)
+# names(income_data)
+
+# Merge data based on Community Area
+merged_data <- merge(x = crime_data, y = income_data, by.x = "Community.Area", by.y = "Community.Area.Number", all = TRUE)
+```
+
+```{R}
+merged_data1 <- merged_data %>%
+                  group_by(Primary.Type,COMMUNITY.AREA.NAME) %>%
+                  summarize(Crime_Count = n(), Avg_Income = mean(`PER.CAPITA.INCOME`, na.rm = TRUE)) %>%
+                  arrange(desc(Crime_Count)) %>%  # Order by descending crime count
+                  slice_head(n = 10) %>%  # Select the top 5 entries
+                  arrange(desc(Avg_Income))  # Now also order by descending average income
+```
+
+```{R}
+write.csv(merged_data1,"merged_data1.csv")
+```

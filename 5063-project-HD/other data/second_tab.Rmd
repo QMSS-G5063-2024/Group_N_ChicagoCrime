@@ -1,0 +1,2 @@
+This Shiny tab visualizes the distribution of primary crime types in Chicago. Users can select any year between 2001 to 2023 using a downdrop menu, and the app will display a bar chart showing the top ten crime types for the chosen year.   
+Notably, “Battery” and “Theft” have consistently appeared among the most common crimes throughout the period. Starting in 2020, “Weapons Violations” emerged as a primary crime type, potentially reflecting changes in Illinois’s gun regulations.

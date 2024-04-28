@@ -1,0 +1,4 @@
+This map allows users to visualize crime events in Chicago over time. A user can select a crime type and a year to get started. Once the selections are made, an interactive map of the City of Chicago will generate, visualizing the locations of the crime events for that particular year. By hovering over a specific marker, users can also see a brief description of the event.   
+Below the map, text will pop up with the count of the selected crime type in the specific year.   
+By allowing users to filter by crime type and year, this massive dataset becomes more user friendly, and more specific analyses can be made.    
+Note: To ensure the Shiny App functions correctly, the data is sampled every 10 rows.

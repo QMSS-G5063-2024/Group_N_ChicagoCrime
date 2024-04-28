@@ -1,0 +1,24 @@
+---
+title: ''
+output:
+  html_document: default
+  pdf_document: default
+date: ''
+---
+```{r pressure, echo=FALSE,  out.width = '100%'}
+knitr::include_graphics("Presentation1.jpg")
+```
+  
+  
+# Chicago Crime
+Chicago is a city known to have one of the highest crime rates in the U.S. This Shiny App leverages interactive data visualization graphs to present the trends and frequency of crimes occurring in Chicago from 2001 to 2023. Additionally, it fuether explore social factors such as community demographics and income, and their correlations with crime rates. Another section of the app investigates the proximity of crime incidents to police stations, helping to determine whether there is a need for more police stations in areas far from existing ones. We also conducted an in-depth analysis of the relationship between bars and specific crimes (battery, assault, etc.), aiming to identify whether crime rates increase near bars.
+
+# Authors
+Camille Mancuso  
+Cara Xu  
+Herbert Dong  
+SooYeon Choi  
+
+# Data Sources
+[Chicago Data Portal](https://data.cityofchicago.org/Public-Safety/Crimes-2022/9hwr-2zxp/data)   
+[Other data used in this App](https://github.com/QMSS-G5063-2024/Group_N_ChicagoCrime/tree/main/5063-project-HD)
