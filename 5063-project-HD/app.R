@@ -307,7 +307,7 @@ server <- function(input, output,session) {
       scale_x_continuous(breaks = unique(filtered_type$Year)) +
       theme_minimal() +
       labs(
-        title = paste("Distribution of", input$crime_type, "from 2001 to 2023"),
+        title = paste("Distribution of", input$crime_type3, "from 2001 to 2023"),
         x = "Year",
         y = "Count"
       ) +
