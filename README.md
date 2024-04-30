@@ -5,6 +5,8 @@ Camille Mancuso (clm2246@columbia.edu),
 Cara Xu (jx2445@columbia.edu),   
 SooYeon Choi (sc4815@columbia.edu),   
 Herbert Dong (herbert.dong@columbia.edu) 
+## Project book
+https://github.com/QMSS-G5063-2024/Group_N_ChicagoCrime/blob/main/ProjectBook.pdf
 ## URL for the ShinyApp
 https://herbertdong.shinyapps.io/5063-project-HD
 ## Link for R file
