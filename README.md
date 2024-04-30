@@ -1,5 +1,5 @@
 # Group N -- Chicago Crime
-This is the repository for Group N's group project.
+Chicago is a city known to have one of the highest crime rates in the U.S. This Shiny App leverages interactive data visualization graphs to present the trends and frequency of crimes occurring in Chicago from 2001 to 2023. Additionally, it further explores social factors such as community demographics and income and their correlations with crime rates. Another section of the app investigates the proximity of crime incidents to police stations, helping to determine whether there is a need for more police stations in areas far from existing ones. We also conducted an in-depth analysis of the relationship between bars and specific crimes (battery, assault, etc.), aiming to identify whether crime rates increase near bars.
 ## Group members:
 Camille Mancuso (clm2246@columbia.edu),   
 Cara Xu (jx2445@columbia.edu),   
